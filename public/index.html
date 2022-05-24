@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>node</title>
+		<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+		<script src="js/js-spark-md5.min.js"></script>
+		<style>
+			.up_box{
+				width: 800px;
+				margin: 0 auto;
+				background: #ededed;
+				height: 500px;
+				border-radius: 10px;
+				padding: 20px;
+				box-sizing: border-box;
+			}
+			.title{
+				width: 100%;
+				margin: 0 auto;
+				font-size: 25px;
+				border-bottom: 2px solid #999;
+				padding: 20px 0;
+				box-sizing: border-box;
+			}
+			.btn{
+				width: 300px;
+				margin: 30px auto;
+				display: block;
+				height: 50px;
+				border: none;
+				background: #007bff;
+				color: #fff;
+				border-radius: 30px;
+			}
+		</style>
+	</head>
+	<body>
+		
+		<div class="up_box" id="app">
+			<div class="title">上传文件</div>	
+			<button class="btn up_file" @click="upFile()">点击上传 excel</button>
+		</div>
+		
+		<script src="js/vue.js"></script>
+		<script>
+			var app = new Vue({
+				el: '#app',
+				data: {
+					uploadedList:[],
+				},
+				methods: {
+					upFile(){
+						var inputObj = document.createElement('input')
+						var formData = new FormData();
+						inputObj.setAttribute('id', 'file');
+						inputObj.setAttribute('type', 'file');
+						inputObj.setAttribute('name', 'file');
+						inputObj.setAttribute("style", 'visibility:hidden');
+						inputObj.setAttribute("accept", ".xlsx,.xls,.csv")
+						inputObj.addEventListener('change', (evt) => {
+						    const files = evt.target.files;
+							if(files.length > 1){
+								alert('只可以上传单个文件');
+								return
+							}
+							// 计算文件md5值
+							const fileReader = new FileReader()
+							fileReader.readAsBinaryString(files[0]);
+							fileReader.onload = e => {
+								const md5 = SparkMD5.hashBinary(e.target.result);
+								formData.append("file", files[0]);
+								formData.append("md5", md5)
+								_ajax(formData,this)
+							}
+							// formData.append("file", files[0]);
+							// console.log(formData)
+						 //    _ajax(formData,this)
+						})
+						document.body.appendChild(inputObj);
+						inputObj.value;
+						inputObj.click();
+					}
+				}
+			})
+			
+			// 请求接口
+			function _ajax(file,obj){
+				var _this = obj
+					
+				$.ajax({
+				    url:"http://localhost:8527/public/api/files/student",
+				    type:"post",
+					data:file,
+					contentType : false, 
+					processData : false,
+				    dataType:"text",
+				    success:function(res){
+						const data = JSON.parse(res) 
+						if(data.data.result == '成功'){
+							var uploadedList = _this.uploadedList;
+							uploadedList.push(data.data.fileName) 
+							_this.uploadedList =uploadedList;
+							alert('上传成功，去下载');
+							window.location.href="files_list.html";
+						}else{
+							alert('上传失败，请重新上传');
+						}
+				
+				    },
+				    error:function(res){
+						console.log('error',res)
+				    }
+				})
+			}
+
+		</script>
+	
+	</body>
+</html>

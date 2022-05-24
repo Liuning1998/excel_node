@@ -1,0 +1,20 @@
+{
+  "name": "excel_node",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.1",
+    "formidable": "^2.0.1",
+    "node-schedule": "^2.1.0",
+    "node-xlsx": "^0.21.0",
+    "silly-datetime": "^0.1.2"
+  }
+}

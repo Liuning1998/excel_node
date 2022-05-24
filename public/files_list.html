@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>文件列表</title>
+		<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+		<style>
+			*{
+				padding: 0;
+				margin: 0;
+			}
+			.list_ul {
+				width: 800px;
+				margin: 0 auto;
+			}
+			.list_ul li{
+				list-style: none;
+				padding: 10px;
+				margin-bottom: 5px;
+				border-bottom: 1px dashed #999;
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+			.btn{
+				width: 100px;
+				background-color: #007bff;
+				height: 30px;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				color: #fff;
+				border-radius: 30px;
+			}
+			.btn.downloaded{
+				background-color: #9999995e;
+			}
+			.list_title{
+				width: 800px;
+				margin: 0 auto;
+				font-size: 25px;
+				border-bottom: 2px solid #999;
+				padding: 20px 0;
+				box-sizing: border-box;
+			}
+		</style>
+	</head>
+	<body>
+		
+		<div id='app'>
+			<div class="list_title">文件列表</div>
+			<ul class="list_ul">
+				<li v-for="(item,index) in list">
+					<span>{{index + 1}}：{{item.resultName}}</span>
+					<div v-if="!item.downloaded" class="btn" @click="download(item.resultName)">下载</div>
+					<div v-else class="btn downloaded">已下载</div>
+				</li>
+			</ul>
+		</div>
+		
+		
+		<script src="js/vue.js"></script>
+		<script>
+			var app = new Vue({
+				el: '#app',
+				data: {
+					list:[],
+				},
+				created: function () {
+					// `this` 指向 vm 实例
+					var _this = this;
+					$.ajax({
+					    url:"http://localhost:8527/public/api/download/download_list",
+					    type:"get",
+						contentType : false, 
+						processData : false,
+					    dataType:"json",
+					    success:function(res){
+							_this.list = res.data.filesArray
+					    },
+					    error:function(res){
+					        console.log("__失败__",res);
+					    
+					    }
+					})
+				},
+				methods:{
+					download(name){
+						var _this = this;
+						$.ajax({
+						    url:"http://localhost:8527/public/api/download/download?name="+name,
+						    type:"get",
+							xhrFields: {
+								responseType: "arraybuffer",
+							},
+						    success:function(res, _, xhr){
+								console.log(res,_,xhr)
+								let [, fileName] = xhr
+								  .getResponseHeader("Content-Disposition")
+								  .match(/filename=(.*)$/);
+								let blob = new Blob([res], {
+								  type: "application/vnd.ms-excel",
+								});
+								let link = document.createElement("a");
+								link.href = window.URL.createObjectURL(blob);
+								link.download = decodeURI(fileName);
+								link.click();
+								window.URL.revokeObjectURL(link.href);
+								// 修改页面下载按钮样式
+								let dataList = _this.list;
+								let index = dataList.findIndex((obj) =>  obj.resultName === name);
+								_this.$set(_this.list[index], 'downloaded' ,  true)
+						    },
+						    error:function(res){
+						        console.log("__失败__",res);
+								alert('下载失败！')
+						    }
+						})
+					}	
+				}
+			})
+		</script>
+	
+
+	</body>
+</html>
