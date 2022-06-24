@@ -21,16 +21,16 @@ const job = schedule.scheduleJob('30 1 1 1 * *', function (fireDate) {
 		})
 		
 		filterArr.forEach((ele,index)=>{
-			//一个月检查一次 删除超过一个月的源文件和拆分文件 下载状态置为true
+			//一个月检查一次 删除超过30天的源文件和拆分文件 下载状态置为true(不满30天的下个月删除)
 			ele.downloaded = true
 			fs.writeFileSync(p, JSON.stringify(arr),'utf8')
 			fs.unlink('./downloads/'+ele.resultName, (err) => {
-			  console.log(ele.resultName+'已删除');
-			  console.log(err);
+			  // console.log(ele.resultName+'已删除');
+			  // console.log(err);
 			});
 			fs.unlink('./uploads/'+ele.oldName, (err) => {
-			  console.log(ele.oldName+'已删除');
-			  console.log(err);
+			  // console.log(ele.oldName+'已删除');
+			  // console.log(err);
 			});
 		})
 	  
@@ -39,27 +39,19 @@ const job = schedule.scheduleJob('30 1 1 1 * *', function (fireDate) {
 
 //比较两个时间是否大于一个月，例如20170215--到20170315 是一个月，到20170316是大于一个月
 function getExpires(sDate, endDate) {
-    var sDate = new Date(sDate);
-    var eDate = new Date(endDate);
- 
-    if (eDate.getFullYear() - sDate.getFullYear() > 1) {//先比较年
-        return true;
-    } else if (eDate.getMonth() - sDate.getMonth() > 1) {//再比较月
-        return true;
-    } else if (eDate.getMonth() - sDate.getMonth() == 1) {
-        if (eDate.getDate() - sDate.getDate() >= 1) {
-            return true;
-        }
-    }
-     else if (eDate.getFullYear() - sDate.getFullYear() == 1) {
-        if (eDate.getMonth()+12 - sDate.getMonth() > 1) {
-            return true;
-        }
-         else if (eDate.getDate() - sDate.getDate() >= 1) {
-            return true;
-        }
-    }
-    return false;
+	
+	
+	var expireTime = 1000 * 60 * 60 * 24 * 30; //30天
+	
+	if( (endDate - sDate) > expireTime){
+		// console.log('过期')
+		return true
+	}else{
+		// console.log('不过期')
+		return false
+	}
+	
+	
 }
 
 module.exports.job  = job

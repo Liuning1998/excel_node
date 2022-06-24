@@ -101,7 +101,7 @@
 							var uploadedList = _this.uploadedList;
 							uploadedList.push(data.data.fileName) 
 							_this.uploadedList =uploadedList;
-							alert('上传成功，去下载');
+							alert(`上传成功，生成${data.data.fileLength}个文件，点击下载`);
 							window.location.href="files_list.html";
 						}else{
 							alert('上传失败，请重新上传');

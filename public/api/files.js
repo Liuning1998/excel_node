@@ -36,7 +36,7 @@ fliesRouter.post('/student',(request,response,next) => {
 	
 		var oldpath=files.file.filepath;
 		
-		const stream = fs.createReadStream(oldpath);
+		const stream = fs.createReadStream(oldpath);//创建可读流
 		const hash = crypto.createHash('md5');
 		stream.on('data', chunk => {
 		  hash.update(chunk, 'utf8');
@@ -52,25 +52,52 @@ fliesRouter.post('/student',(request,response,next) => {
 			     }
 			  })
 		  }else{
-			  readFile(oldpath,files.file.originalFilename,()=>{
-			  	// var newpath=path.parse(files.file.filepath).dir + '/' + getFileName(files.file.originalFilename);
-			  	
-			  	var newpath=path.parse(files.file.filepath).dir + '/' + files.file.originalFilename;
-			  	
-			  	fs.rename(oldpath,newpath,function(err){
-			  		if(err){
-			  			console.log('改名失败',err)
-			  		}
-			  	})
-			  	
-			  
-			  	response.json({      //响应json数据
-			  	  code: 200,
-			  	  data: { 
-			  		  result: '成功',
-			  		  fileName:files.file.originalFilename
-			  	   }
-			  	})
+			  readFile(oldpath,files.file.originalFilename,(result,createFileLength)=>{
+				  
+				  if(result){
+						var newpath=path.parse(files.file.filepath).dir + '/' + files.file.originalFilename;
+						
+						fs.rename(oldpath,newpath,function(err){
+							if(err){
+								console.log('改名失败',err)
+							}
+						})
+						
+									  
+						response.json({      //响应json数据
+						  code: 200,
+						  data: { 
+							  result: '成功',
+							  fileName:files.file.originalFilename,
+							  fileLength: createFileLength
+						   }
+						})
+						
+				  }else{
+					  // 删除失败文件
+					  fs.unlink(files.file.filepath,function(error){
+					  
+					      if(error){
+					  
+					          console.log(error);
+					  
+					          return false;
+					  
+					      }
+					  
+					      console.log('删除文件成功');
+					  
+					  })
+					  
+					  response.json({      //响应json数据
+					    code: 200,
+					    data: { 
+					  	  result: '失败',
+					  	  fileName:files.file.originalFilename
+					     }
+					  })
+					  
+				  }
 			  	
 			  	
 			  })
@@ -83,6 +110,7 @@ fliesRouter.post('/student',(request,response,next) => {
 })
 	
 
+
 /**
  * 读取文件
  * @param {object}name
@@ -90,57 +118,105 @@ fliesRouter.post('/student',(request,response,next) => {
  */
 async function readFile(filepath,name,callBack){
 	
+	let p = path.join(__dirname, '../../test/rule_data.json')
+	//读取当前record.json文件内容
+	let ruleData = JSON.parse(fs.readFileSync(p, 'utf8'))
+	
+	let ruleDataKeys = Object.keys(ruleData)
+	
+	let newFileObject = new Object();
+	
 	let list = xlsx.parse(filepath);
-	await new Promise((resolve, reject)=>{
-		list.forEach(async (ele,index) => {
-			if(ele.hasOwnProperty("data") && ele.data.length > 0){
-				for(const key in ele.data){
-					if(key > 0){
-						try{
-							//规则
-							var xlsxObj = new Array();
-							xlsxObj.push(
-								{
-									name:ele.name,
-									data:[ele.data[0],ele.data[key]],
-								}
-							)
-							//生成文件
-							fs.writeFileSync('./downloads/'+getFileName(name,ele.name+key), xlsx.build(xlsxObj), "binary");
+	
+	let skuPosition = -1 //商品编码一栏在第几列
+	
+	let result = true
+	
+	let createFileLength = 0; //生成文件数量
+	
+	try{ //用来中止foreach循环
+		
+		await new Promise((resolve, reject)=>{
+			list.forEach(async (ele,index) => {
+				if(ele.hasOwnProperty("data") && ele.data.length > 0){
+					for(const key in ele.data){
+						
+						if( key == 0 ){
 							
-							//记录文件
-							var updateData = {
-								oldName:name,
-								resultName: getFileName(name,ele.name+key),
-								downloaded: false,
-								create: Date.now()
-							} 
-							await readRecord(updateData)
+							// 如果是第一行遍历给newFileObjectpush表头
+							if(index == 0){//如果是sheet1情况下
+								
+								skuPosition = ele.data[key].indexOf('商品编码')
+								
+								if(skuPosition < 0){
+									reject()
+									console.log('文件错误')
+									throw new Error('中止循环')
+								}
+								
+								for(var i=0;i<ruleDataKeys.length;i++){
+									newFileObject[ruleDataKeys[i]] = [];
+									newFileObject[ruleDataKeys[i]].push({name:ele.name,data:[ele.data[key]]})
+								}
+							}
+							
 							resolve()
-						}catch(e){
-							console.log('readFile-err', e);
-							reject()
-							return
+							
+						}else{//从第二行开始遍历
+							let currentData = ele.data[key][skuPosition]// skuPosition ---（sku所在列）
+							
+							for(const i in ruleDataKeys){ //遍历[ '盈通', '中科', '果园', '千禾', '早康' ]
+								
+								let ruleKey = ruleDataKeys[i] //‘中科’
+								if(ruleData[ruleKey].includes( parseFloat(currentData) )){
+									newFileObject[ruleKey][0].data.push(ele.data[key])
+								}
+							}
+							resolve()
 						}
 						
 					}
+					
 				}
-				
-			}
+			})
+			
 		})
 		
-	})
-
-	console.log('完成')
+		// 拆分完成，遍历数组生成文件
+		for(const file in newFileObject){ 
+			
+			if( newFileObject[file][0].data.length > 1 ){
+				
+				createFileLength += 1
+				
+				fs.writeFileSync('./downloads/'+setFileName(name,file), xlsx.build(newFileObject[file]), "binary");
+				
+				//记录文件
+				var updateData = {
+					oldName:name,
+					resultName: setFileName(name,file),
+					downloaded: false,
+					create: Date.now()
+				} 
+				await readRecord(updateData)
+			}
+			
+		}
+		
+		
+	}catch(e){
+		
+		result = false
+	}
 	
 	if(!!callBack){
-		callBack()
+		callBack(result,createFileLength)
 	}
 	
 }
 
 /**
- * 读取record.json
+ * 添加记录到record.json
  * @param {object}updateData
  * @returns {string} return:
  */
@@ -167,7 +243,7 @@ function readRecord(updateData){
  * @param {string}fileName
  * @returns {string} return:newFileName
  */
-function getFileName(fileName,el){
+function setFileName(fileName,newName){
 	
 	var index=fileName.lastIndexOf(".");
 	
@@ -175,10 +251,10 @@ function getFileName(fileName,el){
 	
 	var houzhui = fileName.substring(fileName.lastIndexOf(".")+1);
 	
-	if(el){
-		return name + sd.format(new Date(),"YYYYMMDDHHmmss") + '(' + el + ').' + houzhui
+	if(newName){
+		return newName + sd.format(new Date(),"YYYY_MM_DD_HH_mm_ss") + '.' + houzhui
 	}else{
-		return name + sd.format(new Date(),"YYYYMMDDHHmmss") + '.' + houzhui
+		return newName + sd.format(new Date(),"YYYY_MM_DD_HH_mm_ss") + '.' + houzhui
 	}
 	
 }

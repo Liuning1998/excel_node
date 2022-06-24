@@ -58,11 +58,6 @@ fliesRouter.get('/download',(request,response,next) => {
 				fs.createReadStream(currFile).pipe(response);
 			}).catch((err) => {
 				console.log(err)
-				// response.set("Content-type","text/html");
-				// response.send({
-				// 	msg:'失败'
-				// });
-				// response.end();
 				response.json({      //响应json数据
 				  code: 200,
 				  data: { 
