@@ -10,7 +10,7 @@
 				width: 800px;
 				margin: 0 auto;
 				background: #ededed;
-				height: 500px;
+				min-height: 500px;
 				border-radius: 10px;
 				padding: 20px;
 				box-sizing: border-box;
@@ -33,6 +33,50 @@
 				color: #fff;
 				border-radius: 30px;
 			}
+			
+			.uploadedFile{
+				width: 100%;
+				display: flex;
+				justify-content: space-between;
+				box-sizing: border-box;
+				padding: 10px;
+			}
+			.uploadedFile span{
+				display: flex;
+				align-items: center;
+			}
+			.uploadedFile .download-btn{
+				width: 150px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: #007bff;
+				color: #fff;
+				height: 40px;
+				border-radius: 30px;
+				cursor: pointer;
+			}
+			.fileData{
+				margin-top: 20px;
+			}
+			.fileData .list{
+				display: flex;
+				align-items: center;
+				background-color: #fff;
+				padding: 20px 0;
+			}
+			.fileData .list:nth-child(2n){
+				background-color: beige;
+			}
+			.fileData .list .el{
+				width: 50px;
+				font-size: 20px;
+				font-weight: bold;
+				display: flex;
+				justify-content: center;
+				border-right: 1px solid #999;
+				margin-right: 20px;
+			}
 		</style>
 	</head>
 	<body>
@@ -40,14 +84,33 @@
 		<div class="up_box" id="app">
 			<div class="title">上传文件</div>	
 			<button class="btn up_file" @click="upFile()">点击上传 excel</button>
+			
+			<div class="title" v-if="!!uploadedFile">本次上传文件</div>
+			<div class="uploadedFile" v-if="!!uploadedFile">
+				<span>{{uploadedFile}}</span>
+				<div class="download-btn" @click="download()">去下载</div>
+			</div>
+			<div class="title" v-if="!!fileData && fileData.length > 0">本次拆分失败数据</div>
+			<div class="fileData" v-if="!!fileData && fileData.length > 0">
+				<div v-for="(item,index) in fileData" class="list">
+					<div class="el">{{index + 1}}</div>
+					<div class="content">
+						<div>客户订单号: {{ item[0] }}</div>
+						<div>商品编码: {{ item[1] }}</div>	
+					</div>
+				</div>
+			</div>
 		</div>
+		
+
 		
 		<script src="js/vue.js"></script>
 		<script>
 			var app = new Vue({
 				el: '#app',
 				data: {
-					uploadedList:[],
+					uploadedFile:null,
+					fileData: null
 				},
 				methods: {
 					upFile(){
@@ -80,6 +143,9 @@
 						document.body.appendChild(inputObj);
 						inputObj.value;
 						inputObj.click();
+					},
+					download(){
+						window.location.href="files_list.html";
 					}
 				}
 			})
@@ -98,11 +164,11 @@
 				    success:function(res){
 						const data = JSON.parse(res) 
 						if(data.data.result == '成功'){
-							var uploadedList = _this.uploadedList;
-							uploadedList.push(data.data.fileName) 
-							_this.uploadedList =uploadedList;
+							_this.uploadedFile =data.data.fileName;
+							_this.fileData = data.data.failDataArray;
+							console.log(data.data)
 							alert(`上传成功，生成${data.data.fileLength}个文件，点击下载`);
-							window.location.href="files_list.html";
+							// window.location.href="files_list.html";
 						}else{
 							alert('上传失败，请重新上传');
 						}

@@ -52,7 +52,7 @@ fliesRouter.post('/student',(request,response,next) => {
 			     }
 			  })
 		  }else{
-			  readFile(oldpath,files.file.originalFilename,(result,createFileLength)=>{
+			  readFile(oldpath,files.file.originalFilename,(result,createFileLength,failData)=>{
 				  
 				  if(result){
 						var newpath=path.parse(files.file.filepath).dir + '/' + files.file.originalFilename;
@@ -69,7 +69,8 @@ fliesRouter.post('/student',(request,response,next) => {
 						  data: { 
 							  result: '成功',
 							  fileName:files.file.originalFilename,
-							  fileLength: createFileLength
+							  fileLength: createFileLength,
+							  failDataArray:failData
 						   }
 						})
 						
@@ -134,6 +135,8 @@ async function readFile(filepath,name,callBack){
 	
 	let createFileLength = 0; //生成文件数量
 	
+	let failData = []; //规则外sku
+	
 	try{ //用来中止foreach循环
 		
 		await new Promise((resolve, reject)=>{
@@ -164,12 +167,19 @@ async function readFile(filepath,name,callBack){
 							
 						}else{//从第二行开始遍历
 							let currentData = ele.data[key][skuPosition]// skuPosition ---（sku所在列）
-							
+							let abc;
 							for(const i in ruleDataKeys){ //遍历[ '盈通', '中科', '果园', '千禾', '早康' ]
 								
 								let ruleKey = ruleDataKeys[i] //‘中科’
 								if(ruleData[ruleKey].includes( parseFloat(currentData) )){
 									newFileObject[ruleKey][0].data.push(ele.data[key])
+									abc = true
+								}else if(i == ruleDataKeys.length - 1){
+									if(abc != true){
+										abc = false
+										failData.push([ele.data[key][0],ele.data[key][1]])
+										console.log('不存在',ele.data[key])
+									}
 								}
 							}
 							resolve()
@@ -210,7 +220,7 @@ async function readFile(filepath,name,callBack){
 	}
 	
 	if(!!callBack){
-		callBack(result,createFileLength)
+		callBack(result,createFileLength,failData)
 	}
 	
 }
